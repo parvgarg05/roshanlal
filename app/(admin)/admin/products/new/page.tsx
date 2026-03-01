@@ -1,16 +1,42 @@
 'use client';
 
-import { useTransition, useState } from 'react';
+import { useEffect, useTransition, useState } from 'react';
 import { createProduct } from './actions';
 import Input from '@/components/ui/Input';
 import Button from '@/components/ui/Button';
-import { CATEGORIES } from '@/lib/products';
 import { ArrowLeft, Save } from 'lucide-react';
 import Link from 'next/link';
+
+type CategoryOption = {
+    id: string;
+    label: string;
+    emoji: string;
+};
 
 export default function NewProductPage() {
     const [isPending, startTransition] = useTransition();
     const [error, setError] = useState('');
+    const [categories, setCategories] = useState<CategoryOption[]>([]);
+
+    useEffect(() => {
+        const loadCategories = async () => {
+            try {
+                const res = await fetch('/api/admin/categories', { cache: 'no-store' });
+                const data = await res.json();
+                if (res.ok) {
+                    setCategories((data.categories || []).map((cat: any) => ({
+                        id: cat.id,
+                        label: cat.label,
+                        emoji: cat.emoji,
+                    })));
+                }
+            } catch (fetchError) {
+                console.error('Failed to load categories:', fetchError);
+            }
+        };
+
+        void loadCategories();
+    }, []);
 
     const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
@@ -56,11 +82,19 @@ export default function NewProductPage() {
 
                         <div className="flex flex-col gap-1.5">
                             <label className="text-sm font-semibold text-maroon-900">Category</label>
-                            <select name="categoryId" required className="w-full px-4 py-3 rounded-xl border border-cream-200 bg-cream-50 focus:border-saffron-500 focus:bg-white focus:ring-2 focus:ring-saffron-200 outline-none transition-all">
-                                {CATEGORIES.filter(c => c.id !== 'all').map(cat => (
+                            <select
+                                name="categoryId"
+                                required
+                                disabled={categories.length === 0}
+                                className="w-full px-4 py-3 rounded-xl border border-cream-200 bg-cream-50 focus:border-saffron-500 focus:bg-white focus:ring-2 focus:ring-saffron-200 outline-none transition-all disabled:opacity-60"
+                            >
+                                {categories.map(cat => (
                                     <option key={cat.id} value={cat.id}>{cat.emoji} {cat.label}</option>
                                 ))}
                             </select>
+                            {categories.length === 0 && (
+                                <p className="text-xs text-maroon-500">No categories found. Please create a category first.</p>
+                            )}
                         </div>
                     </div>
                 </div>
