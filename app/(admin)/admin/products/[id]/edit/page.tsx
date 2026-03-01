@@ -1,6 +1,5 @@
 import { notFound } from 'next/navigation';
 import { prisma } from '@/lib/prisma';
-import { CATEGORIES } from '@/lib/products';
 import EditProductForm from './EditProductForm';
 
 export default async function EditProductPage({ params }: { params: Promise<{ id: string }> }) {
@@ -32,11 +31,14 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
         notFound();
     }
 
-    const categories = CATEGORIES.filter((category) => category.id !== 'all').map((category) => ({
-        id: category.id,
-        label: category.label,
-        emoji: category.emoji,
-    }));
+    const categories = await prisma.category.findMany({
+        orderBy: { label: 'asc' },
+        select: {
+            id: true,
+            label: true,
+            emoji: true,
+        },
+    });
 
     return <EditProductForm product={product} categories={categories} />;
 }
