@@ -1,0 +1,141 @@
+/* Global CSS – L.Roshanlal Ji Sweets Design System */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Noto+Serif+Devanagari:wght@400;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ─── CSS Variables ─────────────────────────────────────── */
+:root {
+  --color-saffron: #f97316;
+  --color-maroon: #3b0a0a;
+  --color-gold: #f59e0b;
+  --color-cream: #fdf8ee;
+  --color-cream-dark: #faf0d7;
+  --font-inter: 'Inter', system-ui, sans-serif;
+  --font-playfair: 'Playfair Display', Georgia, serif;
+  --font-devanagari: 'Noto Serif Devanagari', serif;
+}
+
+/* ─── Base Resets ───────────────────────────────────────── */
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body {
+    @apply bg-cream-100 text-maroon-950 font-sans antialiased;
+    font-feature-settings: 'kern' 1, 'liga' 1;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    @apply font-display;
+    text-rendering: optimizeLegibility;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  ::selection {
+    background-color: rgba(249, 115, 22, 0.2);
+    color: #3b0a0a;
+  }
+
+  /* Smooth scrollbar on webkit */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: #fdf8ee;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: #fdba74;
+    border-radius: 9999px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: #f97316;
+  }
+}
+
+/* ─── Component Layer ───────────────────────────────────── */
+@layer components {
+
+  /* Glassmorphism utility */
+  .glass {
+    background: rgba(255, 255, 255, 0.70);
+    backdrop-filter: blur(16px) saturate(180%);
+    -webkit-backdrop-filter: blur(16px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.35);
+  }
+
+  /* Warm saffron glass (for navbar) */
+  .glass-warm {
+    background: rgba(253, 248, 238, 0.85);
+    backdrop-filter: blur(20px) saturate(200%);
+    -webkit-backdrop-filter: blur(20px) saturate(200%);
+    border-bottom: 1px solid rgba(249, 115, 22, 0.15);
+  }
+
+  /* Card base */
+  .card-base {
+    @apply bg-white rounded-2xl shadow-card border border-cream-200 transition-all duration-300;
+  }
+
+  .card-base:hover {
+    @apply shadow-warm-md -translate-y-1;
+  }
+
+  /* Section container */
+  .section-container {
+    @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
+  }
+
+  /* Section padding */
+  .section-py {
+    @apply py-12 sm:py-16 lg:py-20;
+  }
+
+  /* Gradient text */
+  .text-gradient-saffron {
+    background: linear-gradient(135deg, #f97316 0%, #d97706 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .text-gradient-maroon {
+    background: linear-gradient(135deg, #9b1f1f 0%, #3b0a0a 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+}
+
+/* ─── Utility Layer ─────────────────────────────────────── */
+@layer utilities {
+  .touch-target {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}

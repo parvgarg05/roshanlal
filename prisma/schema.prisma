@@ -1,0 +1,182 @@
+// ─── Prisma Schema – Roshanlal & Sons ─────────────────────────────────────
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Enums ────────────────────────────────────────────────────────────────
+
+enum OrderStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+  PROCESSING
+  DELIVERED
+}
+
+// ─── Models ──────────────────────────────────────────────────────────────
+
+model Customer {
+  id        String   @id @default(cuid())
+  name      String
+  phone     String
+  email     String
+  createdAt DateTime @default(now())
+
+  orders  Order[]
+  ratings ProductRating[]
+
+  @@unique([email, phone])
+  @@index([email])
+  @@index([phone])
+}
+
+model Order {
+  id                 String      @id @default(cuid())
+  razorpayOrderId    String      @unique
+  razorpayPaymentId  String?
+  status             OrderStatus @default(PENDING)
+
+  // Financials (stored in paise for Razorpay compatibility)
+  subtotalPaise      Int
+  cgstTotalPaise     Int      @default(0)
+  sgstTotalPaise     Int      @default(0)
+  deliveryPaise      Int
+  totalPaise         Int
+
+  // Shipping address (stored as JSON for flexibility)
+  addressLine        String
+  city               String
+  state              String
+  pincode            String
+
+  // Relations
+  customerId         String?
+  customer           Customer?   @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  items              OrderItem[]
+
+  createdAt          DateTime    @default(now())
+  updatedAt          DateTime    @updatedAt
+
+  @@index([razorpayOrderId])
+  @@index([customerId])
+  @@index([status])
+}
+
+model OrderItem {
+  id          String  @id @default(cuid())
+  orderId     String
+  order       Order   @relation(fields: [orderId], references: [id])
+
+  productId   String
+  name        String
+  price       Int     // in rupees (base price of 1 item)
+  quantity    Int
+  weightGrams Int
+  
+  // Tax breakdown for this specific line item (in paise)
+  gstRate     Int     @default(5)
+  cgstPaise   Int     @default(0)
+  sgstPaise   Int     @default(0)
+
+  @@index([orderId])
+}
+
+// ─── Products & Categories ───────────────────────────────────────────────
+
+model Category {
+  id          String    @id
+  label       String
+  labelHindi  String
+  emoji       String
+  description String
+  gstRate     Int       @default(5)
+  
+  products    Product[]
+}
+
+model Product {
+  id             String   @id @default(cuid())
+  slug           String   @unique
+  name           String
+  nameHindi      String
+  description    String
+  price          Int      // in rupees
+  originalPrice  Int?     // in rupees (optional discount)
+  
+  // Relations
+  categoryId     String
+  category       Category @relation(fields: [categoryId], references: [id])
+  
+  image          String
+  badge          String?
+  badgeColor     String?
+  
+  // Stats & Status
+  rating         Float    @default(5.0)
+  reviewCount    Int      @default(0)
+  isVeg          Boolean  @default(true)
+  isAvailable    Boolean  @default(true)
+  isFeatured     Boolean  @default(false)
+  isTodaySpecial Boolean  @default(false)
+  
+  weightGrams    Int
+  allergens      String[]
+  ingredients    String?
+  shelfLifeDays  Int
+  
+  ratings        ProductRating[]
+  
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  
+  @@index([categoryId])
+  @@index([slug])
+  @@index([isAvailable])
+}
+
+model ProductRating {
+  id         String   @id @default(cuid())
+  productId  String
+  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  customerId String?
+  customer   Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  rating     Int      // 1 to 5 stars
+  createdAt  DateTime @default(now())
+
+  @@index([productId])
+  @@index([customerId])
+}
+
+// ─── Admin Users ──────────────────────────────────────────────────────────
+
+model AdminUser {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String   // Hashed
+  name      String
+  createdAt DateTime @default(now())
+}
+
+model DeliveryPricing {
+  id                       Int      @id
+  freeDeliveryThreshold    Int      @default(499)
+  reducedDeliveryThreshold Int      @default(299)
+  reducedDeliveryFee       Int      @default(30)
+  baseDeliveryFee          Int      @default(50)
+  updatedAt                DateTime @updatedAt
+}
+
+model OrderTiming {
+  id        Int      @id
+  startHour Int      @default(9)
+  endHour   Int      @default(21)
+  updatedAt DateTime @updatedAt
+}
+
