@@ -1,162 +1,101 @@
-'use client';
-
-import { useEffect, useTransition, useState } from 'react';
-import { createProduct } from './actions';
-import Input from '@/components/ui/Input';
-import Button from '@/components/ui/Button';
-import { ArrowLeft, Save } from 'lucide-react';
+import { prisma } from '@/lib/prisma';
+import Image from 'next/image';
+import { formatCurrency, withImageVersion } from '@/lib/utils';
+import ProductToggle from './ProductToggle';
+import { Pencil, Plus } from 'lucide-react';
 import Link from 'next/link';
+import DeleteProductButton from './DeleteProductButton';
 
-type CategoryOption = {
-    id: string;
-    label: string;
-    emoji: string;
-};
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
-export default function NewProductPage() {
-    const [isPending, startTransition] = useTransition();
-    const [error, setError] = useState('');
-    const [categories, setCategories] = useState<CategoryOption[]>([]);
-
-    useEffect(() => {
-        const loadCategories = async () => {
-            try {
-                const res = await fetch('/api/admin/categories', { cache: 'no-store' });
-                const data = await res.json();
-                if (res.ok) {
-                    setCategories((data.categories || []).map((cat: any) => ({
-                        id: cat.id,
-                        label: cat.label,
-                        emoji: cat.emoji,
-                    })));
-                }
-            } catch (fetchError) {
-                console.error('Failed to load categories:', fetchError);
-            }
-        };
-
-        void loadCategories();
-    }, []);
-
-    const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-        e.preventDefault();
-        setError('');
-
-        const form = new FormData(e.currentTarget);
-
-        startTransition(async () => {
-            const result = await createProduct(form);
-            if (result?.error) {
-                setError(result.error);
-            }
-        });
-    };
+export default async function AdminProductsPage() {
+    const products = await prisma.product.findMany({
+        orderBy: { createdAt: 'desc' },
+        include: { category: true },
+    });
 
     return (
-        <div className="p-6 md:p-10 max-w-4xl mx-auto space-y-8">
-            <div className="flex items-center gap-4">
-                <Link href="/admin/products" className="p-2 rounded-xl bg-white border border-cream-200 text-maroon-600 hover:bg-cream-100 transition-colors">
-                    <ArrowLeft size={20} />
-                </Link>
+        <div className="p-6 md:p-10 max-w-7xl mx-auto space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                    <h1 className="font-display font-bold text-3xl text-maroon-900">Add New Product</h1>
-                    <p className="text-maroon-500 mt-1">Create a new mithai for your store.</p>
+                    <h1 className="font-display font-bold text-3xl text-maroon-900">Products ({products.length})</h1>
+                    <p className="text-maroon-500 mt-1">Manage your catalogue. Toggling &apos;Today&apos;s Special&apos; updates the homepage instantly.</p>
                 </div>
+                <Link
+                    href="/admin/products/new"
+                    className="inline-flex items-center gap-2 bg-maroon-900 text-cream-50 px-4 py-2.5 rounded-xl hover:bg-maroon-800 transition-colors font-semibold shadow-warm-sm"
+                >
+                    <Plus size={18} />
+                    Add Product
+                </Link>
             </div>
 
-            <form onSubmit={handleSubmit} className="bg-white p-6 md:p-8 rounded-2xl border border-cream-200 shadow-warm-sm space-y-8">
-                {error && (
-                    <div className="p-4 bg-red-50 text-red-600 text-sm font-medium rounded-xl border border-red-100">
-                        {error}
-                    </div>
-                )}
-
-                {/* 1. Core Info */}
-                <div>
-                    <h3 className="text-lg font-semibold text-maroon-900 border-b border-cream-200 pb-2 mb-4">Core Details</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                        <Input name="name" label="Product Name (English)" required placeholder="e.g. Badam Peda" />
-                        <Input name="nameHindi" label="Product Name (Hindi)" required placeholder="e.g. बादाम पेड़ा" />
-
-                        <Input name="slug" label="URL Slug" required placeholder="e.g. badam-peda" className="lowercase" />
-
-                        <div className="flex flex-col gap-1.5">
-                            <label className="text-sm font-semibold text-maroon-900">Category</label>
-                            <select
-                                name="categoryId"
-                                required
-                                disabled={categories.length === 0}
-                                className="w-full px-4 py-3 rounded-xl border border-cream-200 bg-cream-50 focus:border-saffron-500 focus:bg-white focus:ring-2 focus:ring-saffron-200 outline-none transition-all disabled:opacity-60"
-                            >
-                                {categories.map(cat => (
-                                    <option key={cat.id} value={cat.id}>{cat.emoji} {cat.label}</option>
-                                ))}
-                            </select>
-                            {categories.length === 0 && (
-                                <p className="text-xs text-maroon-500">No categories found. Please create a category first.</p>
-                            )}
-                        </div>
-                    </div>
-                </div>
-
-                {/* 2. Commerce */}
-                <div>
-                    <h3 className="text-lg font-semibold text-maroon-900 border-b border-cream-200 pb-2 mb-4">Pricing & Packaging</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-                        <Input name="price" type="number" step="1" min="1" label="Price (₹)" required placeholder="400" />
-                        <Input name="weightGrams" type="number" step="1" min="1" label="Weight (grams)" required placeholder="500" />
-                        <Input name="shelfLifeDays" type="number" step="1" min="1" label="Shelf Life (days)" required placeholder="7" />
-                    </div>
-                </div>
-
-                {/* 3. Media & Description */}
-                <div>
-                    <h3 className="text-lg font-semibold text-maroon-900 border-b border-cream-200 pb-2 mb-4">Marketing</h3>
-                    <div className="space-y-5">
-                        <Input name="image" label="Image URL" placeholder="https://images.unsplash.com/..." />
-
-                        <div className="flex flex-col gap-1.5">
-                            <label className="text-sm font-semibold text-maroon-900">Description</label>
-                            <textarea
-                                name="description"
-                                required
-                                rows={3}
-                                className="w-full px-4 py-3 rounded-xl border border-cream-200 bg-cream-50 focus:border-saffron-500 focus:bg-white focus:ring-2 focus:ring-saffron-200 outline-none transition-all resize-none"
-                                placeholder="A rich, mouth-watering traditional sweet..."
-                            />
-                        </div>
-                    </div>
-                </div>
-
-                {/* 4. Toggles */}
-                <div>
-                    <h3 className="text-lg font-semibold text-maroon-900 border-b border-cream-200 pb-2 mb-4">Visibility</h3>
-                    <div className="flex flex-wrap gap-6">
-                        <label className="flex items-center gap-2 cursor-pointer">
-                            <input type="checkbox" name="isAvailable" value="true" defaultChecked className="w-4 h-4 text-saffron-600 rounded" />
-                            <span className="text-sm font-medium text-maroon-800">Available in Store</span>
-                        </label>
-                        <label className="flex items-center gap-2 cursor-pointer">
-                            <input type="checkbox" name="isFeatured" value="true" className="w-4 h-4 text-saffron-600 rounded" />
-                            <span className="text-sm font-medium text-maroon-800">Mark as Featured</span>
-                        </label>
-                        <label className="flex items-center gap-2 cursor-pointer">
-                            <input type="checkbox" name="isTodaySpecial" value="true" className="w-4 h-4 text-saffron-600 rounded" />
-                            <span className="text-sm font-medium text-maroon-800">Today&apos;s Special</span>
-                        </label>
-                        <label className="flex items-center gap-2 cursor-pointer">
-                            <input type="checkbox" name="isVeg" value="true" defaultChecked className="w-4 h-4 text-green-600 rounded" />
-                            <span className="text-sm font-medium text-maroon-800">100% Vegetarian</span>
-                        </label>
-                    </div>
-                </div>
-
-                <div className="pt-4 flex justify-end">
-                    <Button type="submit" variant="primary" size="lg" loading={isPending} leftIcon={<Save size={18} />}>
-                        Save Product
-                    </Button>
-                </div>
-            </form>
+            <div className="bg-white rounded-2xl border border-cream-200 shadow-warm-sm overflow-hidden auto-cols-auto overflow-x-auto">
+                <table className="w-full text-left text-sm whitespace-nowrap min-w-[920px]">
+                    <thead className="bg-cream-50 text-maroon-500 font-semibold border-b border-cream-200">
+                        <tr>
+                            <th className="px-5 py-4 w-12">Image</th>
+                            <th className="px-5 py-4">Product Name</th>
+                            <th className="px-5 py-4 text-right">Price</th>
+                            <th className="px-5 py-4 text-center">Actions</th>
+                            <th className="px-5 py-4 text-center">Available</th>
+                            <th className="px-5 py-4 text-center">Featured</th>
+                            <th className="px-5 py-4 text-center">Today&apos;s Special</th>
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y divide-cream-100">
+                        {products.map((product) => (
+                            <tr key={product.id} className="hover:bg-cream-50/50 transition-colors">
+                                <td className="px-5 py-3">
+                                    <div className="relative w-12 h-12 rounded-lg overflow-hidden border border-cream-200">
+                                        <Image
+                                            src={withImageVersion(product.image, product.updatedAt.getTime())}
+                                            alt={product.name}
+                                            fill
+                                            className="object-cover"
+                                            sizes="48px"
+                                        />
+                                    </div>
+                                </td>
+                                <td className="px-5 py-3">
+                                    <div className="text-maroon-900 font-bold">{product.name}</div>
+                                    <div className="text-maroon-500 text-xs flex gap-2 items-center">
+                                        <span>{product.nameHindi}</span>
+                                        <span className="text-cream-300">•</span>
+                                        <span>{product.category.label}</span>
+                                    </div>
+                                </td>
+                                <td className="px-5 py-3 text-right">
+                                    <div className="text-maroon-900 font-semibold">{formatCurrency(product.price)}</div>
+                                    <div className="text-maroon-400 text-xs">/{product.weightGrams}g</div>
+                                </td>
+                                <td className="px-5 py-3 text-center">
+                                    <div className="inline-flex items-center gap-2">
+                                        <Link
+                                            href={`/admin/products/${product.id}/edit`}
+                                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-cream-300 text-maroon-700 hover:bg-cream-50 transition-colors"
+                                        >
+                                            <Pencil size={14} />
+                                            Edit
+                                        </Link>
+                                        <DeleteProductButton id={product.id} name={product.name} />
+                                    </div>
+                                </td>
+                                <td className="px-5 py-3 text-center">
+                                    <ProductToggle id={product.id} field="isAvailable" currentValue={product.isAvailable} />
+                                </td>
+                                <td className="px-5 py-3 text-center">
+                                    <ProductToggle id={product.id} field="isFeatured" currentValue={product.isFeatured} />
+                                </td>
+                                <td className="px-5 py-3 text-center">
+                                    <ProductToggle id={product.id} field="isTodaySpecial" currentValue={product.isTodaySpecial} />
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
         </div>
     );
 }
