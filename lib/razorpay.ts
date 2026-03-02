@@ -10,7 +10,7 @@ export function getRazorpay(): Razorpay {
 
         if (!keyId || !keySecret) {
             throw new Error(
-                'Missing Razorpay credentials. Set RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET in .env.local'
+                'Missing Razorpay credentials. Set RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET in environment variables.'
             );
         }
 
