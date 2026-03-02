@@ -199,13 +199,18 @@ export async function POST(req: NextRequest) {
             deliveryCharge,
             total: grandTotal,
         });
-    } catch (err) {
+    } catch (err: any) {
         console.error('[create-order]', err);
 
-        // If DB is not connected (no DATABASE_URL), surface a clear message
-        const message =
-            err instanceof Error ? err.message : 'Internal server error';
+        // 🚨 NAYA CHANGE: Asli error ko frontend tak bhejne ke liye
+        const errorMessage = 
+            err?.error?.description || // Razorpay ka specific error
+            err?.message ||            // Prisma/Database ka error
+            'Unknown Internal Error';
 
-        return NextResponse.json({ error: message }, { status: 500 });
+        return NextResponse.json({ 
+            error: errorMessage, 
+            fullDetails: err // Browser ke network tab ke liye
+        }, { status: 500 });
     }
 }
