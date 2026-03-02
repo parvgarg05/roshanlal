@@ -71,7 +71,6 @@ export async function POST(req: NextRequest) {
         for (const { id, quantity } of items) {
             const product = await prisma.product.findUnique({
                 where: { id },
-                include: { category: { select: { gstRate: true } } } as any
             });
             if (!product || !product.isAvailable) {
                 return NextResponse.json(
@@ -80,8 +79,20 @@ export async function POST(req: NextRequest) {
                 );
             }
 
+            const category = await prisma.category.findUnique({
+                where: { id: product.categoryId },
+                select: { gstRate: true },
+            });
+
+            if (!category) {
+                return NextResponse.json(
+                    { error: `Product "${id}" has invalid category configuration` },
+                    { status: 400 }
+                );
+            }
+
             const basePrice = product.price; // in Rupees
-            const gstRate = (product as any).category.gstRate as number;
+            const gstRate = category.gstRate;
             const itemBaseTotalRupees = basePrice * quantity;
 
             if ((product.badge || '').toLowerCase() === 'free delivery') {
