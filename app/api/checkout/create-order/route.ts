@@ -4,12 +4,27 @@ import { calculateDeliveryCharge, getDeliveryPricingConfig } from '@/lib/deliver
 import { getRazorpay } from '@/lib/razorpay';
 import { prisma } from '@/lib/prisma';
 import { formatOrderWindowIST, getOrderTimingConfig, isWithinOrderWindowIST } from '@/lib/orderTiming';
+import { validatePaymentEnv } from '@/lib/paymentEnv';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
 export async function POST(req: NextRequest) {
     try {
+        const paymentEnv = validatePaymentEnv();
+        const publishableKeyId = paymentEnv.publishableKeyId;
+
+        if (!paymentEnv.ok || !publishableKeyId) {
+            return NextResponse.json(
+                {
+                    error:
+                        'Server misconfiguration: missing payment environment variables.',
+                    missing: paymentEnv.missing,
+                },
+                { status: 500 }
+            );
+        }
+
         const orderTiming = await getOrderTimingConfig();
         const enforceSetting = (process.env.ENFORCE_ORDER_TIMING || '').toLowerCase();
         const shouldEnforceOrderTiming = enforceSetting !== 'false';
@@ -165,7 +180,7 @@ export async function POST(req: NextRequest) {
             razorpayOrderId: rzpOrder.id,
             amount: totalPaise,
             currency: 'INR',
-            keyId: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
+            keyId: publishableKeyId,
             internalOrderId: dbOrder.id,
             subtotal,
             cgstTotal,
