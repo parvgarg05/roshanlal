@@ -1,9 +1,7 @@
-import Link from 'next/link';
 import { prisma } from '@/lib/prisma';
 import { formatCurrency, formatDateTimeIST } from '@/lib/utils';
 import { OrderStatus } from '@prisma/client';
 import StatusSelect from './StatusSelect';
-import PastOrdersDateFilter from './PastOrdersDateFilter';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -106,7 +104,6 @@ export default async function OrdersPage({ searchParams }: OrdersPageProps) {
 
     const statusFilter = getStatusFilterForTab(activeTab);
     const { startUtc, endUtc } = getIstDayRange(new Date());
-    const todayIstInput = getIstDateInputString(new Date());
     const parsedSelectedDate = parseIstDateInputToUtcRange(selectedDateInput);
 
     const createdAtFilter:
@@ -168,7 +165,7 @@ export default async function OrdersPage({ searchParams }: OrdersPageProps) {
                                         </div>
                                     </td>
 
-                                    {/* ✅ FIXED Customer Column */}
+                                    {/* Customer */}
                                     <td className="px-5 py-4 align-top">
                                         {order.customer ? (
                                             <>
