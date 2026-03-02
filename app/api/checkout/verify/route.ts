@@ -3,6 +3,9 @@ import crypto from 'crypto';
 import { PaymentVerifySchema } from '@/lib/validations/payment';
 import { prisma } from '@/lib/prisma';
 import { sendOrderConfirmationFanOut } from '@/lib/notifications';
+import { validatePaymentEnv } from '@/lib/paymentEnv';
+
+export const runtime = 'nodejs';
 
 export async function POST(req: NextRequest) {
     try {
@@ -26,13 +29,18 @@ export async function POST(req: NextRequest) {
 
         // 2. Reconstruct expected HMAC-SHA256 signature
         //    Razorpay spec: HMAC_SHA256(orderId + "|" + paymentId, key_secret)
-        const keySecret = process.env.RAZORPAY_KEY_SECRET;
-        if (!keySecret) {
+        const paymentEnv = validatePaymentEnv();
+        if (!paymentEnv.secretPresent) {
             return NextResponse.json(
-                { error: 'Server misconfiguration: missing RAZORPAY_KEY_SECRET' },
+                {
+                    error: 'Server misconfiguration: missing payment environment variables.',
+                    missing: paymentEnv.missing,
+                },
                 { status: 500 }
             );
         }
+
+        const keySecret = process.env.RAZORPAY_KEY_SECRET as string;
 
         const expectedSignature = crypto
             .createHmac('sha256', keySecret)
@@ -52,6 +60,40 @@ export async function POST(req: NextRequest) {
                 { error: 'Invalid payment signature. Payment verification failed.' },
                 { status: 400 }
             );
+        }
+
+        const existingOrder = await prisma.order.findUnique({
+            where: { id: internalOrderId },
+            select: {
+                id: true,
+                razorpayOrderId: true,
+                razorpayPaymentId: true,
+                status: true,
+                customer: { select: { name: true, email: true, phone: true } },
+            },
+        });
+
+        if (!existingOrder) {
+            return NextResponse.json(
+                { error: 'Order not found for verification.' },
+                { status: 404 }
+            );
+        }
+
+        if (existingOrder.razorpayOrderId !== razorpayOrderId) {
+            return NextResponse.json(
+                { error: 'Order mismatch during verification.' },
+                { status: 400 }
+            );
+        }
+
+        if (existingOrder.status === 'PAID') {
+            return NextResponse.json({
+                success: true,
+                orderId: existingOrder.id,
+                status: existingOrder.status,
+                customer: existingOrder.customer,
+            });
         }
 
         // 4. Mark order as PAID in database
