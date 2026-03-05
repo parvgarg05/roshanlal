@@ -42,16 +42,16 @@ export default function AdminLoginForm() {
     };
 
     return (
-        <div className="min-h-[calc(100dvh-72px)] md:min-h-full flex items-center justify-center p-3 bg-cream-50">
-            <div className="w-full max-w-sm bg-white p-6 rounded-2xl shadow-warm border border-cream-200 text-center">
-                <div className="w-11 h-11 bg-maroon-100 text-maroon-800 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <Lock size={24} />
+        <div className="min-h-[100dvh] flex items-center justify-center px-4 py-8 bg-cream-50">
+            <div className="w-full max-w-md bg-white px-6 py-7 sm:px-8 sm:py-8 rounded-3xl shadow-warm border border-cream-200 text-center">
+                <div className="w-12 h-12 bg-maroon-100 text-maroon-800 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <Lock size={22} />
                 </div>
 
-                <h1 className="font-display font-bold text-2xl text-maroon-900 mb-2">Admin Login</h1>
-                <p className="text-sm text-maroon-500 mb-6">Enter your admin credentials to access the L.Roshanlal Ji Sweets dashboard.</p>
+                <h1 className="font-display font-bold text-2xl sm:text-[28px] text-maroon-900 mb-2">Admin Login</h1>
+                <p className="text-sm text-maroon-500 mb-7">Enter your credentials to access the L.Roshanlal Ji Sweets dashboard.</p>
 
-                <form onSubmit={handleLogin} className="space-y-4 text-left">
+                <form onSubmit={handleLogin} className="space-y-5 text-left">
                     <Input
                         type="text"
                         label="Username"
@@ -92,13 +92,17 @@ export default function AdminLoginForm() {
                     <Button
                         type="submit"
                         variant="primary"
-                        className="w-full mt-2"
+                        className="w-full mt-1"
                         loading={isLoading}
                     >
                         <span className={isLoading ? 'animate-pulse' : ''}>
                             {isLoading ? 'Signing In...' : 'Sign In'}
                         </span>
                     </Button>
+
+                    <p className="text-xs text-center text-maroon-400 pt-1">
+                        Authorized admins only
+                    </p>
                 </form>
             </div>
         </div>
