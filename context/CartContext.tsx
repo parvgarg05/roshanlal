@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useOptimistic, useTransition } from 'react';
 import {
     DEFAULT_DELIVERY_PRICING,
     calculateDeliveryCharge,
@@ -41,8 +41,44 @@ const CartContext = createContext<CartContextValue | null>(null);
 
 const CART_STORAGE_KEY = 'rl_cart';
 
+type CartAction =
+    | { type: 'add'; item: Omit<CartItem, 'quantity'> }
+    | { type: 'remove'; id: string }
+    | { type: 'update-quantity'; id: string; quantity: number }
+    | { type: 'clear' };
+
+function reduceCartItems(state: CartItem[], action: CartAction): CartItem[] {
+    switch (action.type) {
+        case 'add': {
+            const existing = state.find((i) => i.id === action.item.id);
+            if (existing) {
+                return state.map((i) =>
+                    i.id === action.item.id ? { ...i, quantity: i.quantity + 1 } : i
+                );
+            }
+            return [...state, { ...action.item, quantity: 1 }];
+        }
+        case 'remove':
+            return state.filter((i) => i.id !== action.id);
+        case 'update-quantity': {
+            if (action.quantity <= 0) {
+                return state.filter((i) => i.id !== action.id);
+            }
+            return state.map((i) =>
+                i.id === action.id ? { ...i, quantity: action.quantity } : i
+            );
+        }
+        case 'clear':
+            return [];
+        default:
+            return state;
+    }
+}
+
 export function CartProvider({ children }: { children: React.ReactNode }) {
     const [items, setItems] = useState<CartItem[]>([]);
+    const [, startTransition] = useTransition();
+    const [optimisticItems, applyOptimistic] = useOptimistic(items, reduceCartItems);
     const [deliveryConfig, setDeliveryConfig] = useState<DeliveryPricingConfig>(DEFAULT_DELIVERY_PRICING);
     const [cartToastMessage, setCartToastMessage] = useState<string | null>(null);
 
@@ -61,12 +97,19 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(items));
     }, [items]);
 
+    const dispatchCartAction = (action: CartAction) => {
+        applyOptimistic(action);
+        startTransition(() => {
+            setItems((prev) => reduceCartItems(prev, action));
+        });
+    };
+
     useEffect(() => {
         let isMounted = true;
 
         const loadDeliveryConfig = async () => {
             try {
-                const res = await fetch('/api/config/delivery', { cache: 'no-store' });
+                const res = await fetch('/api/config/delivery');
                 if (!res.ok) return;
 
                 const config = await res.json() as DeliveryPricingConfig;
@@ -86,15 +129,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     }, []);
 
     const addItem = (product: Omit<CartItem, 'quantity'>) => {
-        setItems((prev) => {
-            const existing = prev.find((i) => i.id === product.id);
-            if (existing) {
-                return prev.map((i) =>
-                    i.id === product.id ? { ...i, quantity: i.quantity + 1 } : i
-                );
-            }
-            return [...prev, { ...product, quantity: 1 }];
-        });
+        dispatchCartAction({ type: 'add', item: product });
         setCartToastMessage('Added to cart');
     };
 
@@ -105,24 +140,21 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     }, [cartToastMessage]);
 
     const removeItem = (id: string) =>
-        setItems((prev) => prev.filter((i) => i.id !== id));
+        dispatchCartAction({ type: 'remove', id });
 
     const updateQuantity = (id: string, quantity: number) => {
-        if (quantity <= 0) return removeItem(id);
-        setItems((prev) =>
-            prev.map((i) => (i.id === id ? { ...i, quantity } : i))
-        );
+        dispatchCartAction({ type: 'update-quantity', id, quantity });
     };
 
-    const clearCart = () => setItems([]);
+    const clearCart = () => dispatchCartAction({ type: 'clear' });
 
-    const totalItems = items.reduce((sum, i) => sum + i.quantity, 0);
-    const totalPrice = items.reduce((sum, i) => sum + i.price * i.quantity, 0);
-    const hasFreeDeliveryEligibleItem = items.some((i) => i.isFreeDeliveryEligible);
+    const totalItems = optimisticItems.reduce((sum, i) => sum + i.quantity, 0);
+    const totalPrice = optimisticItems.reduce((sum, i) => sum + i.price * i.quantity, 0);
+    const hasFreeDeliveryEligibleItem = optimisticItems.some((i) => i.isFreeDeliveryEligible);
     const deliveryCharge = calculateDeliveryCharge(totalPrice, hasFreeDeliveryEligibleItem, deliveryConfig);
 
     // Derived GST State
-    const { cgstTotal, sgstTotal } = items.reduce((acc, i) => {
+    const { cgstTotal, sgstTotal } = optimisticItems.reduce((acc, i) => {
         const itemGst = (i.price * i.quantity * (i.gstRate || 5)) / 100;
         const halfGst = itemGst / 2;
         return {
@@ -133,7 +165,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
     return (
         <CartContext.Provider
-            value={{ items, totalItems, totalPrice, cgstTotal, sgstTotal, hasFreeDeliveryEligibleItem, deliveryConfig, deliveryCharge, addItem, removeItem, updateQuantity, clearCart, cartToastMessage, clearCartToast: () => setCartToastMessage(null) }}
+            value={{ items: optimisticItems, totalItems, totalPrice, cgstTotal, sgstTotal, hasFreeDeliveryEligibleItem, deliveryConfig, deliveryCharge, addItem, removeItem, updateQuantity, clearCart, cartToastMessage, clearCartToast: () => setCartToastMessage(null) }}
         >
             {children}
         </CartContext.Provider>
