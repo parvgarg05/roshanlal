@@ -1,10 +1,11 @@
 'use server';
 
 import { Prisma } from '@prisma/client';
-import { revalidatePath } from 'next/cache';
+import { revalidatePath, revalidateTag } from 'next/cache';
 import { prisma } from '@/lib/prisma';
 import { redirect } from 'next/navigation';
 import { isHttpImageUrl } from '@/lib/utils';
+import { CACHE_TAGS } from '@/lib/cache-tags';
 
 export async function updateProduct(id: string, formData: FormData) {
     try {
@@ -60,5 +61,8 @@ export async function updateProduct(id: string, formData: FormData) {
     revalidatePath('/admin/products');
     revalidatePath('/');
     revalidatePath('/items');
+    revalidateTag(CACHE_TAGS.products);
+    revalidateTag(CACHE_TAGS.featuredProducts);
+    revalidateTag(CACHE_TAGS.todaySpecials);
     redirect('/admin/products');
 }
