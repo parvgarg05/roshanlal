@@ -37,12 +37,21 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
             {/* Backdrop */}
             <div
                 className={clsx(
-                    'fixed inset-0 z-50 bg-maroon-950/40 backdrop-blur-sm transition-opacity duration-300',
+                    'fixed inset-0 z-50',
                     isOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
                 )}
                 onClick={onClose}
                 aria-hidden
-            />
+            >
+                <div
+                    className={clsx(
+                        'absolute inset-0 transition-[opacity,backdrop-filter,background-color] duration-300 ease-out will-change-[opacity,backdrop-filter]',
+                        isOpen
+                            ? 'opacity-100 bg-maroon-950/40 backdrop-blur-sm'
+                            : 'opacity-0 bg-maroon-950/0 backdrop-blur-0'
+                    )}
+                />
+            </div>
 
             {/* Drawer panel */}
             <aside
@@ -51,7 +60,7 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
                 aria-label="Shopping cart"
                 className={clsx(
                     'fixed top-0 right-0 bottom-0 z-50 w-full max-w-md bg-cream-50 shadow-warm-lg',
-                    'flex flex-col transition-transform duration-300 ease-in-out',
+                    'flex flex-col transform-gpu transition-transform duration-300 ease-in-out',
                     isOpen ? 'translate-x-0' : 'translate-x-full'
                 )}
             >
