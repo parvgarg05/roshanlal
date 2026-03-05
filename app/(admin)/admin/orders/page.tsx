@@ -1,7 +1,10 @@
 import { prisma } from '@/lib/prisma';
 import { formatCurrency, formatDateTimeIST } from '@/lib/utils';
 import { OrderStatus } from '@prisma/client';
+import Link from 'next/link';
 import StatusSelect from './StatusSelect';
+import PastOrdersDateFilter from './PastOrdersDateFilter';
+import RefreshOrdersButton from './RefreshOrdersButton';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -23,7 +26,7 @@ type AdminOrderTab = (typeof ADMIN_ORDER_TABS)[number]['key'];
 
 function getStatusFilterForTab(tab: AdminOrderTab): OrderStatus[] {
     if (tab === 'processing') return [OrderStatus.PROCESSING];
-    if (tab === 'pending-payment') return [OrderStatus.PENDING, OrderStatus.FAILED];
+    if (tab === 'pending-payment') return [OrderStatus.PENDING];
     if (tab === 'delivered') return [OrderStatus.DELIVERED];
 
     return [
@@ -31,7 +34,6 @@ function getStatusFilterForTab(tab: AdminOrderTab): OrderStatus[] {
         OrderStatus.PAID,
         OrderStatus.PROCESSING,
         OrderStatus.DELIVERED,
-        OrderStatus.FAILED,
         OrderStatus.REFUNDED,
     ];
 }
@@ -86,6 +88,17 @@ function getIstDateInputString(referenceDate: Date) {
     return `${year}-${month}-${day}`;
 }
 
+function buildOrdersTabHref(tab: AdminOrderTab, selectedDateInput?: string) {
+    const params = new URLSearchParams();
+    params.set('tab', tab);
+
+    if (tab === 'past' && selectedDateInput) {
+        params.set('date', selectedDateInput);
+    }
+
+    return `/admin/orders?${params.toString()}`;
+}
+
 export default async function OrdersPage({ searchParams }: OrdersPageProps) {
     const resolvedSearchParams = await searchParams;
     const requestedTab = Array.isArray(resolvedSearchParams.tab)
@@ -105,6 +118,13 @@ export default async function OrdersPage({ searchParams }: OrdersPageProps) {
     const statusFilter = getStatusFilterForTab(activeTab);
     const { startUtc, endUtc } = getIstDayRange(new Date());
     const parsedSelectedDate = parseIstDateInputToUtcRange(selectedDateInput);
+    const currentIstDateInput = getIstDateInputString(new Date());
+
+    const pastDateValue = activeTab === 'past'
+        ? (selectedDateInput && parseIstDateInputToUtcRange(selectedDateInput)
+            ? selectedDateInput
+            : currentIstDateInput)
+        : currentIstDateInput;
 
     const createdAtFilter:
         | { gte?: Date; lte?: Date; lt?: Date }
@@ -131,9 +151,38 @@ export default async function OrdersPage({ searchParams }: OrdersPageProps) {
 
     return (
         <div className="p-6 md:p-10 max-w-7xl mx-auto space-y-6">
-            <h1 className="font-display font-bold text-3xl text-maroon-900">
-                Orders
-            </h1>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+                <h1 className="font-display font-bold text-3xl text-maroon-900">
+                    Orders
+                </h1>
+                <RefreshOrdersButton />
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+                {ADMIN_ORDER_TABS.map((tab) => {
+                    const isActive = tab.key === activeTab;
+
+                    return (
+                        <Link
+                            key={tab.key}
+                            href={buildOrdersTabHref(tab.key, selectedDateInput)}
+                            className={`h-10 px-4 rounded-xl border text-sm font-semibold transition-colors ${isActive
+                                ? 'bg-maroon-900 text-white border-maroon-900'
+                                : 'bg-white text-maroon-700 border-cream-200 hover:bg-cream-100'
+                                }`}
+                        >
+                            <span className="inline-flex h-full items-center">{tab.label}</span>
+                        </Link>
+                    );
+                })}
+            </div>
+
+            {activeTab === 'past' && (
+                <PastOrdersDateFilter
+                    selectedDate={pastDateValue}
+                    maxDate={currentIstDateInput}
+                />
+            )}
 
             <div className="bg-white rounded-2xl border border-cream-200 shadow-warm-sm overflow-x-auto">
                 {orders.length === 0 ? (
