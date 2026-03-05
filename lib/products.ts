@@ -1,6 +1,8 @@
 import { prisma } from './prisma';
 import type { Product, ProductCategory } from '@/types';
 import { withImageVersion } from './utils';
+import { unstable_cache } from 'next/cache';
+import { CACHE_TAGS } from './cache-tags';
 
 /**
  * ─── Database-Backed Product Queries ─────────────────────────
@@ -42,36 +44,72 @@ function mapToProductType(dbProduct: any): Product {
 }
 
 export async function getProductsByCategory(category: ProductCategory): Promise<Product[]> {
-    const whereClause = category === 'all' ? { isAvailable: true } : { categoryId: category, isAvailable: true };
-    const products = await prisma.product.findMany({
-        where: whereClause,
-        orderBy: { createdAt: 'desc' },
-    });
-    return products.map(mapToProductType);
+    return getProductsByCategoryCached(category);
 }
+
+const getProductsByCategoryCached = unstable_cache(
+    async (category: ProductCategory): Promise<Product[]> => {
+        const whereClause = category === 'all' ? { isAvailable: true } : { categoryId: category, isAvailable: true };
+        const products = await prisma.product.findMany({
+            where: whereClause,
+            orderBy: { createdAt: 'desc' },
+        });
+
+        return products.map(mapToProductType);
+    },
+    ['products-by-category'],
+    { tags: [CACHE_TAGS.products], revalidate: 120 }
+);
 
 export async function getFeaturedProducts(): Promise<Product[]> {
-    const products = await prisma.product.findMany({
-        where: { isFeatured: true, isAvailable: true },
-        orderBy: { createdAt: 'desc' },
-    });
-    return products.map(mapToProductType);
+    return getFeaturedProductsCached();
 }
+
+const getFeaturedProductsCached = unstable_cache(
+    async (): Promise<Product[]> => {
+        const products = await prisma.product.findMany({
+            where: { isFeatured: true, isAvailable: true },
+            orderBy: { createdAt: 'desc' },
+        });
+
+        return products.map(mapToProductType);
+    },
+    ['featured-products'],
+    { tags: [CACHE_TAGS.products, CACHE_TAGS.featuredProducts], revalidate: 120 }
+);
 
 export async function getTodaySpecials(): Promise<Product[]> {
-    const products = await prisma.product.findMany({
-        where: { isTodaySpecial: true, isAvailable: true },
-        orderBy: { createdAt: 'desc' },
-    });
-    return products.map(mapToProductType);
+    return getTodaySpecialsCached();
 }
 
+const getTodaySpecialsCached = unstable_cache(
+    async (): Promise<Product[]> => {
+        const products = await prisma.product.findMany({
+            where: { isTodaySpecial: true, isAvailable: true },
+            orderBy: { createdAt: 'desc' },
+        });
+
+        return products.map(mapToProductType);
+    },
+    ['today-specials'],
+    { tags: [CACHE_TAGS.products, CACHE_TAGS.todaySpecials], revalidate: 120 }
+);
+
 export async function getProductBySlug(slug: string): Promise<Product | undefined> {
-    const product = await prisma.product.findUnique({
-        where: { slug },
-    });
-    return product ? mapToProductType(product) : undefined;
+    return getProductBySlugCached(slug);
 }
+
+const getProductBySlugCached = unstable_cache(
+    async (slug: string): Promise<Product | undefined> => {
+        const product = await prisma.product.findUnique({
+            where: { slug },
+        });
+
+        return product ? mapToProductType(product) : undefined;
+    },
+    ['product-by-slug'],
+    { tags: [CACHE_TAGS.products], revalidate: 120 }
+);
 
 export async function searchProducts(query: string): Promise<Product[]> {
     const q = query.toLowerCase().trim();
@@ -126,23 +164,31 @@ export const CATEGORIES: CategoryMeta[] = [
  * Get categories from database (includes 'all' category)
  */
 export async function getCategories(): Promise<CategoryMeta[]> {
-    try {
-        const dbCategories = await prisma.category.findMany({
-            orderBy: { label: 'asc' },
-        });
-        
-        const allCategory: CategoryMeta = { 
-            id: 'all', 
-            label: 'All Items', 
-            labelHindi: 'सभी मिठाई', 
-            emoji: '🍬', 
-            description: 'Browse our complete collection', 
-            gstRate: 5 
-        };
-        
-        return [allCategory, ...dbCategories as CategoryMeta[]];
-    } catch (error) {
-        console.error('Failed to fetch categories from DB, falling back to static:', error);
-        return CATEGORIES;
-    }
+    return getCategoriesCached();
 }
+
+const getCategoriesCached = unstable_cache(
+    async (): Promise<CategoryMeta[]> => {
+        try {
+            const dbCategories = await prisma.category.findMany({
+                orderBy: { label: 'asc' },
+            });
+
+            const allCategory: CategoryMeta = {
+                id: 'all',
+                label: 'All Items',
+                labelHindi: 'सभी मिठाई',
+                emoji: '🍬',
+                description: 'Browse our complete collection',
+                gstRate: 5,
+            };
+
+            return [allCategory, ...dbCategories as CategoryMeta[]];
+        } catch (error) {
+            console.error('Failed to fetch categories from DB, falling back to static:', error);
+            return CATEGORIES;
+        }
+    },
+    ['categories'],
+    { tags: [CACHE_TAGS.categories], revalidate: 300 }
+);
