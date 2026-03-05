@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import CartToast from '@/components/CartToast';
+import ScrollToTopButton from '@/components/ScrollToTopButton';
 
 export default function SiteChrome({ children }: { children: ReactNode }) {
     const pathname = usePathname();
@@ -20,6 +21,7 @@ export default function SiteChrome({ children }: { children: ReactNode }) {
             <main className="flex-1">{children}</main>
             <Footer />
             <CartToast />
+            <ScrollToTopButton />
         </>
     );
 }
