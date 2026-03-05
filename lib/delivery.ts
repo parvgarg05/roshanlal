@@ -1,4 +1,6 @@
 import { prisma } from './prisma';
+import { unstable_cache } from 'next/cache';
+import { CACHE_TAGS } from './cache-tags';
 
 export interface DeliveryPricingConfig {
     freeDeliveryThreshold: number;
@@ -26,22 +28,30 @@ export function calculateDeliveryCharge(
 }
 
 export async function getDeliveryPricingConfig(): Promise<DeliveryPricingConfig> {
-    try {
-        const config = await (prisma as any).deliveryPricing.findUnique({
-            where: { id: 1 },
-        });
+    return getDeliveryPricingConfigCached();
+}
 
-        if (!config) {
+const getDeliveryPricingConfigCached = unstable_cache(
+    async (): Promise<DeliveryPricingConfig> => {
+        try {
+            const config = await (prisma as any).deliveryPricing.findUnique({
+                where: { id: 1 },
+            });
+
+            if (!config) {
+                return DEFAULT_DELIVERY_PRICING;
+            }
+
+            return {
+                freeDeliveryThreshold: config.freeDeliveryThreshold,
+                reducedDeliveryThreshold: config.reducedDeliveryThreshold,
+                reducedDeliveryFee: config.reducedDeliveryFee,
+                baseDeliveryFee: config.baseDeliveryFee,
+            };
+        } catch {
             return DEFAULT_DELIVERY_PRICING;
         }
-
-        return {
-            freeDeliveryThreshold: config.freeDeliveryThreshold,
-            reducedDeliveryThreshold: config.reducedDeliveryThreshold,
-            reducedDeliveryFee: config.reducedDeliveryFee,
-            baseDeliveryFee: config.baseDeliveryFee,
-        };
-    } catch {
-        return DEFAULT_DELIVERY_PRICING;
-    }
-}
+    },
+    ['delivery-pricing-config'],
+    { tags: [CACHE_TAGS.deliveryConfig], revalidate: 300 }
+);
