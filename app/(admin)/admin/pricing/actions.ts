@@ -1,7 +1,8 @@
 'use server';
 
-import { revalidatePath } from 'next/cache';
+import { revalidatePath, revalidateTag } from 'next/cache';
 import { prisma } from '@/lib/prisma';
+import { CACHE_TAGS } from '@/lib/cache-tags';
 
 function parseIntField(formData: FormData, key: string, fallback: number) {
     const raw = Number(formData.get(key));
@@ -40,6 +41,7 @@ export async function updateDeliveryPricing(formData: FormData) {
         revalidatePath('/admin/pricing');
         revalidatePath('/cart');
         revalidatePath('/checkout');
+        revalidateTag(CACHE_TAGS.deliveryConfig);
 
         return { success: true };
     } catch (error) {
