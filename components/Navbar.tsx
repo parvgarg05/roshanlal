@@ -62,6 +62,7 @@ export default function Navbar() {
                                     src="/logo.png"
                                     alt="L.Roshanlal Ji Sweets"
                                     fill
+                                    sizes="(max-width: 768px) 56px, 64px"
                                     className="object-contain"
                                     priority
                                 />
