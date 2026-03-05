@@ -153,19 +153,26 @@ export default function Navbar() {
             {/* Mobile menu backdrop */}
             <div
                 className={clsx(
-                    'fixed inset-0 z-40 transition-all duration-300 md:hidden',
+                    'fixed inset-0 z-40 md:hidden',
                     isMenuOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
                 )}
                 onClick={() => setIsMenuOpen(false)}
                 aria-hidden
             >
-                <div className="absolute inset-0 bg-maroon-950/40 backdrop-blur-sm" />
+                <div
+                    className={clsx(
+                        'absolute inset-0 transition-[opacity,backdrop-filter,background-color] duration-300 ease-out will-change-[opacity,backdrop-filter]',
+                        isMenuOpen
+                            ? 'opacity-100 bg-maroon-950/40 backdrop-blur-sm'
+                            : 'opacity-0 bg-maroon-950/0 backdrop-blur-0'
+                    )}
+                />
             </div>
 
             {/* Mobile drawer */}
             <aside
                 className={clsx(
-                    'fixed top-0 right-0 bottom-0 z-50 w-72 shadow-warm-lg bg-cream-100 flex flex-col transition-transform duration-300 ease-in-out md:hidden',
+                    'fixed top-0 right-0 bottom-0 z-50 w-72 shadow-warm-lg bg-cream-100 flex flex-col transform-gpu transition-transform duration-300 ease-in-out md:hidden',
                     isMenuOpen ? 'translate-x-0' : 'translate-x-full'
                 )}
                 aria-label="Mobile menu"
