@@ -8,9 +8,11 @@ import { getFeaturedProducts, getTodaySpecials, getCategories } from '@/lib/prod
 import { formatCurrency } from '@/lib/utils';
 
 export default async function HomePage() {
-    const todaySpecials = await getTodaySpecials();
-    const featuredProducts = await getFeaturedProducts();
-    const categories = await getCategories();
+    const [todaySpecials, featuredProducts, categories] = await Promise.all([
+        getTodaySpecials(),
+        getFeaturedProducts(),
+        getCategories(),
+    ]);
 
     return (
         <>
