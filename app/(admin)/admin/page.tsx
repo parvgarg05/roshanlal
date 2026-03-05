@@ -1,6 +1,8 @@
 import { prisma } from '@/lib/prisma';
 import { formatCurrency, getUtcRangeForCurrentISTDay } from '@/lib/utils';
-import { IndianRupee, TrendingUp, Package, Clock } from 'lucide-react';
+import { TrendingUp, Package, Clock } from 'lucide-react';
+import { Suspense } from 'react';
+import AllTimeStats from './AllTimeStats';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -8,44 +10,26 @@ export const revalidate = 0;
 export default async function AdminDashboard() {
     const { start: todayStart, end: todayEnd } = getUtcRangeForCurrentISTDay();
 
-    // 1. Fetch Today's Orders
-    const todaysOrders = await prisma.order.findMany({
-        where: {
-            createdAt: {
-                gte: todayStart,
-                lte: todayEnd,
+    const [todaysOrders, pendingOrdersCount] = await Promise.all([
+        prisma.order.findMany({
+            where: {
+                createdAt: {
+                    gte: todayStart,
+                    lte: todayEnd,
+                },
+                NOT: { status: 'PENDING' },
             },
-            NOT: { status: 'PENDING' },
-        },
-        select: {
-            totalPaise: true,
-            status: true,
-        },
-    });
+            select: {
+                totalPaise: true,
+                status: true,
+            },
+        }),
+        prisma.order.count({
+            where: { status: 'PENDING' },
+        }),
+    ]);
 
     const todayRevenuePaise = todaysOrders
-        .filter((o) => o.status !== 'FAILED')
-        .reduce((sum, o) => sum + o.totalPaise, 0);
-
-    const pendingOrdersCount = await prisma.order.count({
-        where: { status: 'PENDING' },
-    });
-
-    // 2. Fetch All-Time Revenue + Orders
-    const allOrders = await prisma.order.findMany({
-        where: { NOT: { status: 'PENDING' } },
-        select: { totalPaise: true, status: true },
-    });
-
-    const allOrdersCount = await prisma.order.count({
-        where: {
-            status: {
-                in: ['PAID', 'PROCESSING', 'DELIVERED', 'REFUNDED'],
-            },
-        },
-    });
-
-    const allTimeRevenuePaise = allOrders
         .filter((o) => o.status !== 'FAILED')
         .reduce((sum, o) => sum + o.totalPaise, 0);
 
@@ -65,25 +49,11 @@ export default async function AdminDashboard() {
             bg: 'bg-saffron-100',
         },
         {
-            label: 'All-Time Orders',
-            value: allOrdersCount.toString(),
-            icon: Package,
-            color: 'text-indigo-600',
-            bg: 'bg-indigo-100',
-        },
-        {
             label: 'Pending Orders',
             value: pendingOrdersCount.toString(),
             icon: Clock,
             color: 'text-amber-600',
             bg: 'bg-amber-100',
-        },
-        {
-            label: 'All-Time Revenue',
-            value: formatCurrency(allTimeRevenuePaise / 100),
-            icon: IndianRupee,
-            color: 'text-maroon-600',
-            bg: 'bg-maroon-100',
         },
     ];
 
@@ -96,7 +66,7 @@ export default async function AdminDashboard() {
                 </div>
 
                 {/* Stats Grid */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-6">
                     {STATS.map((stat, i) => (
                         <div key={i} className="bg-white p-6 rounded-2xl border border-cream-200 shadow-warm-sm flex items-start gap-4 min-w-0">
                             <div className={`p-3 rounded-xl ${stat.bg} ${stat.color} shrink-0`}>
@@ -110,6 +80,16 @@ export default async function AdminDashboard() {
                             </div>
                         </div>
                     ))}
+                    <Suspense
+                        fallback={
+                            <>
+                                <div className="bg-white p-6 rounded-2xl border border-cream-200 shadow-warm-sm animate-pulse" />
+                                <div className="bg-white p-6 rounded-2xl border border-cream-200 shadow-warm-sm animate-pulse" />
+                            </>
+                        }
+                    >
+                        <AllTimeStats />
+                    </Suspense>
                 </div>
 
                 {/* Quick Actions / Info */}
