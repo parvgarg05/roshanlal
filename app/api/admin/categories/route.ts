@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { revalidateTag } from 'next/cache';
 import { prisma } from '@/lib/prisma';
+import { CACHE_TAGS } from '@/lib/cache-tags';
 
 export async function GET() {
     try {
@@ -39,6 +41,8 @@ export async function POST(req: NextRequest) {
             },
         });
 
+        revalidateTag(CACHE_TAGS.categories);
+
         return NextResponse.json({ category });
     } catch (error: any) {
         console.error('[create-category]', error);
@@ -72,6 +76,8 @@ export async function DELETE(req: NextRequest) {
         await prisma.category.delete({
             where: { id },
         });
+
+        revalidateTag(CACHE_TAGS.categories);
 
         return NextResponse.json({ success: true });
     } catch (error: any) {
