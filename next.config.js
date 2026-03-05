@@ -5,7 +5,7 @@ const nextConfig = {
   // disable static export behavior
   output: undefined,
 
-  // Bypassing strict checks so Vercel deploys our new environment variables!
+  // Keeping the safety nets so Vercel doesn't fail your build due to the missing ESLint config
   eslint: {
     ignoreDuringBuilds: true,
   },
@@ -13,8 +13,10 @@ const nextConfig = {
     ignoreBuildErrors: true,
   },
 
-  // NAYA ADDITION: External images ko Vercel par load hone allow karne ke liye
+  // NAYA ADDITION: Optimized Edge images with formats and Cache TTL
   images: {
+    formats: ['image/avif', 'image/webp'],
+    minimumCacheTTL: 2678400, // 31 days cache
     remotePatterns: [
       {
         protocol: 'https',
