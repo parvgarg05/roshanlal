@@ -1,7 +1,8 @@
 'use server';
 
-import { revalidatePath } from 'next/cache';
+import { revalidatePath, revalidateTag } from 'next/cache';
 import { prisma } from '@/lib/prisma';
+import { CACHE_TAGS } from '@/lib/cache-tags';
 
 export async function toggleProductStatus(id: string, field: 'isAvailable' | 'isFeatured' | 'isTodaySpecial', currentValue: boolean) {
     try {
@@ -14,6 +15,9 @@ export async function toggleProductStatus(id: string, field: 'isAvailable' | 'is
         revalidatePath('/admin/products');
         revalidatePath('/');
         revalidatePath('/items');
+        revalidateTag(CACHE_TAGS.products);
+        revalidateTag(CACHE_TAGS.featuredProducts);
+        revalidateTag(CACHE_TAGS.todaySpecials);
 
         return { success: true };
     } catch (error) {
@@ -31,6 +35,9 @@ export async function deleteProduct(id: string) {
         revalidatePath('/admin/products');
         revalidatePath('/');
         revalidatePath('/items');
+        revalidateTag(CACHE_TAGS.products);
+        revalidateTag(CACHE_TAGS.featuredProducts);
+        revalidateTag(CACHE_TAGS.todaySpecials);
 
         return { success: true };
     } catch (error) {
