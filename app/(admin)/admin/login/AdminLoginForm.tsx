@@ -1,13 +1,12 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { Eye, EyeOff, Lock } from 'lucide-react';
 import Input from '@/components/ui/Input';
 import Button from '@/components/ui/Button';
 
 export default function AdminLoginForm() {
-    const router = useRouter();
     const searchParams = useSearchParams();
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
@@ -29,10 +28,10 @@ export default function AdminLoginForm() {
 
             if (res.ok) {
                 const from = searchParams?.get('from') || '/admin';
-                router.push(from);
-                router.refresh();
+                window.location.assign(from);
+                return;
             } else {
-                const data = await res.json();
+                const data = await res.json().catch(() => ({}));
                 setError(data.error || 'Invalid credentials');
             }
         } catch {
@@ -96,7 +95,9 @@ export default function AdminLoginForm() {
                         className="w-full mt-2"
                         loading={isLoading}
                     >
-                        Sign In
+                        <span className={isLoading ? 'animate-pulse' : ''}>
+                            {isLoading ? 'Signing In...' : 'Sign In'}
+                        </span>
                     </Button>
                 </form>
             </div>
