@@ -4,6 +4,8 @@ import { useState, useCallback, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
+import Script from 'next/script';
 import { ShieldCheck, CreditCard, Lock, Truck, AlertCircle } from 'lucide-react';
 import {
     CheckoutFormSchema,
@@ -42,16 +44,26 @@ interface RazorpayInstance {
     on(event: string, cb: () => void): void;
 }
 
-/* ─── Helper: load Razorpay script ──────────────────────────── */
-function loadRazorpayScript(): Promise<boolean> {
+/* ─── Helper: wait for Razorpay SDK ─────────────────────────── */
+function waitForRazorpayScript(timeoutMs: number = 5000): Promise<boolean> {
     return new Promise((resolve) => {
-        if (document.getElementById('razorpay-cdn')) return resolve(true);
-        const script = document.createElement('script');
-        script.id = 'razorpay-cdn';
-        script.src = 'https://checkout.razorpay.com/v1/checkout.js';
-        script.onload = () => resolve(true);
-        script.onerror = () => resolve(false);
-        document.body.appendChild(script);
+        const start = Date.now();
+
+        const tick = () => {
+            if (typeof window !== 'undefined' && typeof window.Razorpay === 'function') {
+                resolve(true);
+                return;
+            }
+
+            if (Date.now() - start >= timeoutMs) {
+                resolve(false);
+                return;
+            }
+
+            setTimeout(tick, 100);
+        };
+
+        tick();
     });
 }
 
@@ -98,6 +110,7 @@ export default function CheckoutForm() {
     const [apiError, setApiError] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [isFinalizingPayment, setIsFinalizingPayment] = useState(false);
+    const [isRazorpayReady, setIsRazorpayReady] = useState(false);
 
     const {
         register,
@@ -141,8 +154,8 @@ export default function CheckoutForm() {
                 internalOrderId: string;
             };
 
-            // Step 2: Load Razorpay script
-            const loaded = await loadRazorpayScript();
+            // Step 2: Ensure Razorpay SDK is available
+            const loaded = isRazorpayReady || await waitForRazorpayScript();
             if (!loaded) throw new Error('Could not load payment gateway. Check your internet connection.');
 
             // Step 3: Open Razorpay widget
@@ -217,10 +230,16 @@ export default function CheckoutForm() {
         } finally {
             setIsLoading(false);
         }
-    }, [items, clearCart, router]);
+    }, [items, clearCart, router, isRazorpayReady]);
 
     return (
         <div className="grid lg:grid-cols-5 gap-5 sm:gap-6 lg:gap-10">
+            <Script
+                id="razorpay-cdn"
+                src="https://checkout.razorpay.com/v1/checkout.js"
+                strategy="lazyOnload"
+                onReady={() => setIsRazorpayReady(true)}
+            />
 
             {/* ── Left: Form ── */}
             <form
@@ -355,7 +374,14 @@ export default function CheckoutForm() {
                         {items.map((item) => (
                             <li key={item.id} className="flex items-center gap-3">
                                 <div className="w-10 h-10 rounded-xl bg-cream-100 shrink-0 overflow-hidden relative">
-                                    <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
+                                    <Image
+                                        src={item.image}
+                                        alt={item.name}
+                                        fill
+                                        sizes="40px"
+                                        className="object-cover"
+                                        loading="lazy"
+                                    />
                                 </div>
                                 <div className="flex-1 min-w-0">
                                     <p className="text-sm font-medium text-maroon-900 line-clamp-1">{item.name}</p>
