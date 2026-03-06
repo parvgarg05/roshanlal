@@ -145,7 +145,6 @@ export default async function OrdersPage({ searchParams }: OrdersPageProps) {
         orderBy: { createdAt: 'desc' },
         include: {
             customer: true,
-            items: true,
         },
     });
 
@@ -194,8 +193,8 @@ export default async function OrdersPage({ searchParams }: OrdersPageProps) {
                         <thead className="bg-cream-100 text-maroon-500 font-semibold border-b border-cream-200">
                             <tr>
                                 <th className="px-5 py-4">Order Details</th>
-                                <th className="px-5 py-4 min-w-[260px]">Customer</th>
-                                <th className="px-5 py-4 min-w-[280px]">Address</th>
+                                <th className="px-5 py-4 min-w-[210px]">Customer</th>
+                                <th className="px-5 py-4 min-w-[220px]">Address</th>
                                 <th className="px-5 py-4 text-right">Total</th>
                                 <th className="px-5 py-4 text-center">Status</th>
                             </tr>
@@ -215,7 +214,7 @@ export default async function OrdersPage({ searchParams }: OrdersPageProps) {
                                     </td>
 
                                     {/* Customer */}
-                                    <td className="px-5 py-4 align-top min-w-[260px]">
+                                    <td className="px-5 py-4 align-top min-w-[210px]">
                                         {order.customer ? (
                                             <>
                                                 <div className="text-maroon-900 font-medium">
@@ -224,7 +223,7 @@ export default async function OrdersPage({ searchParams }: OrdersPageProps) {
                                                 <div className="text-maroon-500 text-sm mt-0.5">
                                                     {order.customer.phone}
                                                 </div>
-                                                <div className="text-maroon-500 text-sm mt-0.5 whitespace-normal break-all max-w-[280px] leading-snug">
+                                                <div className="text-maroon-500 text-sm mt-0.5 whitespace-normal break-all max-w-[230px] leading-snug">
                                                     {order.customer.email}
                                                 </div>
                                             </>
@@ -236,7 +235,7 @@ export default async function OrdersPage({ searchParams }: OrdersPageProps) {
                                     </td>
 
                                     {/* Address */}
-                                    <td className="px-5 py-4 align-top whitespace-normal min-w-[280px] max-w-[360px] leading-snug">
+                                    <td className="px-5 py-4 align-top whitespace-normal min-w-[220px] max-w-[300px] leading-snug">
                                         {order.addressLine}, {order.city},{' '}
                                         {order.state} {order.pincode}
                                     </td>
