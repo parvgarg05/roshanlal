@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { X, ShoppingBag, Trash2, ArrowRight, Tag, Loader2 } from 'lucide-react';
-import { useEffect, useState, useTransition } from 'react';
+import { useEffect, useState } from 'react';
 import clsx from 'clsx';
 import { useRouter } from 'next/navigation';
 import { useCart } from '@/context/CartContext';
@@ -18,24 +18,30 @@ interface CartDrawerProps {
 
 export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
     const router = useRouter();
-    const [isNavigating, startNavigationTransition] = useTransition();
     const [pendingPath, setPendingPath] = useState<string | null>(null);
     const { items, totalItems, totalPrice, cgstTotal, sgstTotal, deliveryConfig, deliveryCharge: delivery, updateQuantity, removeItem } = useCart();
     const grandTotal = totalPrice + cgstTotal + sgstTotal + delivery;
 
     const navigateFromDrawer = (path: '/checkout' | '/cart') => {
-        if (isNavigating) return;
+        if (pendingPath) return;
         setPendingPath(path);
-        startNavigationTransition(() => {
-            router.push(path);
-        });
+        onClose();
+        router.push(path);
     };
 
     useEffect(() => {
-        if (!isNavigating) {
+        if (!isOpen) {
             setPendingPath(null);
         }
-    }, [isNavigating]);
+    }, [isOpen]);
+
+    useEffect(() => {
+        // Warm up routes used by drawer CTAs to reduce navigation latency.
+        if (isOpen) {
+            router.prefetch('/checkout');
+            router.prefetch('/cart');
+        }
+    }, [isOpen, router]);
 
     // Lock scroll
     useEffect(() => {
@@ -206,10 +212,10 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
                                     size="lg"
                                     fullWidth
                                     rightIcon={<ArrowRight size={18} />}
-                                    disabled={isNavigating && pendingPath === '/checkout'}
+                                    disabled={Boolean(pendingPath)}
                                     onClick={() => navigateFromDrawer('/checkout')}
                                 >
-                                    {isNavigating && pendingPath === '/checkout' ? (
+                                    {pendingPath === '/checkout' ? (
                                         <span className="inline-flex items-center gap-2">
                                             <Loader2 size={16} className="animate-spin" />
                                             Opening Checkout...
@@ -222,10 +228,10 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
                                     variant="ghost"
                                     size="md"
                                     fullWidth
-                                    disabled={isNavigating && pendingPath === '/cart'}
+                                    disabled={Boolean(pendingPath)}
                                     onClick={() => navigateFromDrawer('/cart')}
                                 >
-                                    {isNavigating && pendingPath === '/cart' ? (
+                                    {pendingPath === '/cart' ? (
                                         <span className="inline-flex items-center gap-2">
                                             <Loader2 size={16} className="animate-spin" />
                                             Opening Cart...
