@@ -2,15 +2,28 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-import { Trash2, ShoppingBag, ArrowRight, Tag, ArrowLeft } from 'lucide-react';
+import { Trash2, ShoppingBag, ArrowRight, Tag, ArrowLeft, Loader2 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { useState, useTransition } from 'react';
 import { useCart } from '@/context/CartContext';
 import QuantitySelector from '@/components/ui/QuantitySelector';
 import Button from '@/components/ui/Button';
 import { formatCurrency } from '@/lib/utils';
 
 export default function CartPage() {
+    const router = useRouter();
+    const [isNavigating, startNavigationTransition] = useTransition();
+    const [checkoutPending, setCheckoutPending] = useState(false);
     const { items, totalPrice, deliveryConfig, deliveryCharge: delivery, updateQuantity, removeItem, clearCart } = useCart();
     const grandTotal = totalPrice + delivery;
+
+    const goToCheckout = () => {
+        if (isNavigating) return;
+        setCheckoutPending(true);
+        startNavigationTransition(() => {
+            router.push('/checkout');
+        });
+    };
 
     if (items.length === 0) {
         return (
@@ -154,13 +167,24 @@ export default function CartPage() {
                             </div>
 
                             <div className="mt-5 flex flex-col gap-2.5">
-                                <Link href="/checkout" className="w-full">
-                                    <Button variant="primary" size="lg" fullWidth rightIcon={<ArrowRight size={18} />}>
-                                        Proceed to Checkout
-                                    </Button>
-                                </Link>
+                                <Button
+                                    variant="primary"
+                                    size="lg"
+                                    fullWidth
+                                    rightIcon={<ArrowRight size={18} />}
+                                    disabled={isNavigating && checkoutPending}
+                                    onClick={goToCheckout}
+                                >
+                                    {isNavigating && checkoutPending ? (
+                                        <span className="inline-flex items-center gap-2">
+                                            <Loader2 size={16} className="animate-spin" />
+                                            Opening Checkout...
+                                        </span>
+                                    ) : (
+                                        'Proceed to Checkout'
+                                    )}
+                                </Button>
                                 <p className="text-[11px] text-center text-maroon-400">
-                                    Secured with Razorpay · Free cancellation within 30 min
                                 </p>
                             </div>
                         </div>
