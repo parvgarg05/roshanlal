@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useState, useEffect, useTransition } from 'react';
+import { useState, useEffect, useTransition, useRef } from 'react';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import { ShoppingCart, Menu, X, Phone, Search, Loader2 } from 'lucide-react';
@@ -20,17 +20,55 @@ export default function Navbar() {
     const { totalItems } = useCart();
     const pathname = usePathname();
     const router = useRouter();
+    const prevPathname = useRef(pathname);
+    
+    // Navigation States (for instant feedback and loading)
+    const [targetPath, setTargetPath] = useState<string | null>(null);
     const [isOrdersPending, startOrdersTransition] = useTransition();
+    
     const [currentSearchParams, setCurrentSearchParams] = useState<URLSearchParams | null>(null);
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [isCartOpen, setIsCartOpen] = useState(false);
 
+    /* ---------------- ORDERS NAVIGATION ---------------- */
+
     const goToOrders = () => {
-        if (isOrdersPending) return;
+        // Agar pehle se hi orders page par hain, toh bas menu band kar do
+        if (pathname === '/orders') {
+            setIsMenuOpen(false);
+            setTargetPath(null);
+            return;
+        }
+
+        // Agar pehle se loading chal rahi hai, toh click ignore karo
+        if (isOrdersPending || targetPath === '/orders') return;
+        
+        // Instant spinner ke liye state update
+        setTargetPath('/orders');
+        
+        // Background routing start
         startOrdersTransition(() => {
             router.push('/orders');
         });
     };
+
+    // Failsafe: Agar network slow ho aur atak jaye toh 8 second baad spinner reset
+    useEffect(() => {
+        if (!targetPath) return;
+        const timer = setTimeout(() => setTargetPath(null), 8000);
+        return () => clearTimeout(timer);
+    }, [targetPath]);
+
+    // Handshake: Page load complete hone ke baad hi menu band hoga
+    useEffect(() => {
+        if (prevPathname.current !== pathname) {
+            prevPathname.current = pathname;
+            setIsMenuOpen(false);
+            setTargetPath(null);
+        }
+    }, [pathname]);
+
+    /* ---------------- ACTIVE LINK LOGIC ---------------- */
 
     const isNavLinkActive = (href: string) => {
         const [path, queryString] = href.split('?');
@@ -48,15 +86,36 @@ export default function Navbar() {
         return Array.from(linkParams.entries()).every(([key, value]) => currentSearchParams?.get(key) === value);
     };
 
+    /* ---------------- EFFECTS ---------------- */
+
     // Lock body scroll when mobile menu open
     useEffect(() => {
+        const originalOverflow = document.body.style.overflow;
         document.body.style.overflow = isMenuOpen ? 'hidden' : '';
-        return () => { document.body.style.overflow = ''; };
+        return () => { document.body.style.overflow = originalOverflow; };
+    }, [isMenuOpen]);
+
+    // Notify other floating UI (e.g. toast) so they can avoid overlapping the mobile drawer.
+    useEffect(() => {
+        window.dispatchEvent(
+            new CustomEvent('mobile-menu-state-change', { detail: { isOpen: isMenuOpen } })
+        );
+
+        return () => {
+            window.dispatchEvent(
+                new CustomEvent('mobile-menu-state-change', { detail: { isOpen: false } })
+            );
+        };
     }, [isMenuOpen]);
 
     useEffect(() => {
         setCurrentSearchParams(new URLSearchParams(window.location.search));
     }, [pathname]);
+
+    // Prefetch orders page
+    useEffect(() => {
+        router.prefetch('/orders');
+    }, [router]);
 
     return (
         <>
@@ -124,7 +183,7 @@ export default function Navbar() {
                                 <Phone size={20} />
                             </a>
 
-                            {/* Cart button → opens CartDrawer */}
+                            {/* Cart button */}
                             <button
                                 onClick={() => setIsCartOpen(true)}
                                 aria-label={`Open cart, ${totalItems} items`}
@@ -138,13 +197,19 @@ export default function Navbar() {
                                 )}
                             </button>
 
+                            {/* Desktop Orders Button */}
                             <button
                                 type="button"
                                 onClick={goToOrders}
-                                disabled={isOrdersPending}
-                                className="hidden md:inline-flex items-center gap-1.5 px-4 py-2 border border-saffron-400 text-saffron-700 bg-transparent text-sm font-semibold rounded-xl hover:bg-saffron-50 hover:border-saffron-500 transition-all duration-200 disabled:opacity-70 disabled:cursor-not-allowed"
+                                aria-disabled={isOrdersPending || targetPath === '/orders'}
+                                className={clsx(
+                                    "hidden md:inline-flex items-center gap-1.5 px-4 py-2 border border-saffron-400 text-saffron-700 bg-transparent text-sm font-semibold rounded-xl transition-all duration-200",
+                                    (isOrdersPending || targetPath === '/orders') 
+                                        ? "opacity-70 pointer-events-none" 
+                                        : "hover:bg-saffron-50 hover:border-saffron-500"
+                                )}
                             >
-                                {isOrdersPending ? (
+                                {(isOrdersPending || targetPath === '/orders') ? (
                                     <>
                                         <Loader2 size={14} className="animate-spin" />
                                         Opening...
@@ -171,7 +236,7 @@ export default function Navbar() {
             {/* Mobile menu backdrop */}
             <div
                 className={clsx(
-                    'fixed inset-0 z-40 md:hidden',
+                    'fixed inset-0 z-[80] md:hidden',
                     isMenuOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
                 )}
                 onClick={() => setIsMenuOpen(false)}
@@ -190,7 +255,7 @@ export default function Navbar() {
             {/* Mobile drawer */}
             <aside
                 className={clsx(
-                    'fixed top-0 right-0 bottom-0 z-50 w-72 shadow-warm-lg bg-cream-100 flex flex-col transform-gpu transition-transform duration-300 ease-in-out md:hidden',
+                    'fixed top-0 right-0 bottom-0 z-[90] w-72 shadow-warm-lg bg-cream-100 flex flex-col transform-gpu transition-transform duration-300 ease-in-out md:hidden',
                     isMenuOpen ? 'translate-x-0' : 'translate-x-full'
                 )}
                 aria-label="Mobile menu"
@@ -225,16 +290,19 @@ export default function Navbar() {
                 </nav>
 
                 <div className="p-4 border-t border-cream-200 flex flex-col gap-3">
+                    {/* Fixed Mobile Button without the disabled attribute */}
                     <button
                         type="button"
-                        onClick={() => {
-                            setIsMenuOpen(false);
-                            goToOrders();
-                        }}
-                        disabled={isOrdersPending}
-                        className="flex items-center justify-center w-full py-3.5 bg-saffron-gradient text-white font-semibold rounded-2xl shadow-warm hover:shadow-glow transition-all duration-200 touch-target disabled:opacity-70 disabled:cursor-not-allowed"
+                        onClick={goToOrders}
+                        aria-disabled={isOrdersPending || targetPath === '/orders'}
+                        className={clsx(
+                            "flex items-center justify-center w-full py-3.5 bg-saffron-gradient text-white font-semibold rounded-2xl shadow-warm transition-all duration-200 touch-target",
+                            (isOrdersPending || targetPath === '/orders') 
+                                ? "opacity-70 pointer-events-none" 
+                                : "active:scale-[0.98] hover:shadow-glow"
+                        )}
                     >
-                        {isOrdersPending ? (
+                        {(isOrdersPending || targetPath === '/orders') ? (
                             <span className="inline-flex items-center gap-2">
                                 <Loader2 size={16} className="animate-spin" />
                                 Opening...
@@ -243,6 +311,7 @@ export default function Navbar() {
                             'My Orders'
                         )}
                     </button>
+                    
                     <a
                         href="tel:+917055513961"
                         className="flex items-center justify-center gap-2 w-full py-3 border border-maroon-200 text-maroon-800 font-medium rounded-2xl hover:bg-maroon-50 transition-colors duration-200 touch-target"
