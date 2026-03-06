@@ -91,17 +91,6 @@ export default async function AdminDashboard() {
                         <AllTimeStats />
                     </Suspense>
                 </div>
-
-                {/* Quick Actions / Info */}
-                <div className="bg-cream-100 rounded-2xl p-6 border border-cream-200">
-                    <h3 className="font-bold text-maroon-900 mb-2">Need to process orders?</h3>
-                    <p className="text-maroon-600 text-sm mb-4">
-                        You have {pendingOrdersCount} orders waiting to be processed or shipped. Head over to the Orders tab to update their status.
-                    </p>
-                    <a href="/admin/orders" className="inline-flex items-center justify-center h-10 px-4 rounded-xl bg-maroon-900 text-white text-sm font-medium hover:bg-maroon-800 transition-colors">
-                        View Orders
-                    </a>
-                </div>
             </div>
         </div>
     );
