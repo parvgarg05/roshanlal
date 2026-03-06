@@ -5,7 +5,7 @@ import Image from 'next/image';
 import { X, ShoppingBag, Trash2, ArrowRight, Tag, Loader2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import clsx from 'clsx';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useCart } from '@/context/CartContext';
 import QuantitySelector from '@/components/ui/QuantitySelector';
 import Button from '@/components/ui/Button';
@@ -18,22 +18,48 @@ interface CartDrawerProps {
 
 export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
     const router = useRouter();
-    const [pendingPath, setPendingPath] = useState<string | null>(null);
+    const pathname = usePathname();
+    const [pendingPath, setPendingPath] = useState<'/checkout' | '/cart' | null>(null);
     const { items, totalItems, totalPrice, cgstTotal, sgstTotal, deliveryConfig, deliveryCharge: delivery, updateQuantity, removeItem } = useCart();
     const grandTotal = totalPrice + cgstTotal + sgstTotal + delivery;
 
     const navigateFromDrawer = (path: '/checkout' | '/cart') => {
         if (pendingPath) return;
         setPendingPath(path);
-        onClose();
+
+        // Keep drawer visible for checkout so users can see button-level loading state.
+        if (path === '/cart') {
+            onClose();
+        }
+
         router.push(path);
     };
 
     useEffect(() => {
-        if (!isOpen) {
+        if (pendingPath && pathname === pendingPath) {
+            if (pendingPath === '/checkout') {
+                onClose();
+            }
             setPendingPath(null);
         }
-    }, [isOpen]);
+    }, [pathname, pendingPath, onClose]);
+
+    useEffect(() => {
+        if (!isOpen && !pendingPath) {
+            setPendingPath(null);
+        }
+    }, [isOpen, pendingPath]);
+
+    useEffect(() => {
+        if (!pendingPath) return;
+
+        // Safety net so UI doesn't get stuck if navigation errors out.
+        const timer = setTimeout(() => {
+            setPendingPath(null);
+        }, 8000);
+
+        return () => clearTimeout(timer);
+    }, [pendingPath]);
 
     useEffect(() => {
         // Warm up routes used by drawer CTAs to reduce navigation latency.
