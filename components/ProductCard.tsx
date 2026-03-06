@@ -198,7 +198,12 @@ export default function ProductCard({ product: initialProduct, className }: Prod
                             size="sm"
                             value={qty}
                             min={0}
-                            onChange={(v) => updateQuantity(product.id, v)}
+                            onChange={(v) => {
+                                // If user adjusts quantity manually (especially to 0),
+                                // clear transient add-success UI state.
+                                setJustAdded(false);
+                                updateQuantity(product.id, v);
+                            }}
                         />
                     )}
                 </div>
