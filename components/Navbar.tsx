@@ -1,10 +1,10 @@
 'use client';
 
 import Link from 'next/link';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useTransition } from 'react';
 import Image from 'next/image';
-import { usePathname } from 'next/navigation';
-import { ShoppingCart, Menu, X, Phone, Search } from 'lucide-react';
+import { usePathname, useRouter } from 'next/navigation';
+import { ShoppingCart, Menu, X, Phone, Search, Loader2 } from 'lucide-react';
 import { useCart } from '@/context/CartContext';
 import CartDrawer from '@/components/CartDrawer';
 import clsx from 'clsx';
@@ -19,9 +19,18 @@ const NAV_LINKS = [
 export default function Navbar() {
     const { totalItems } = useCart();
     const pathname = usePathname();
+    const router = useRouter();
+    const [isOrdersPending, startOrdersTransition] = useTransition();
     const [currentSearchParams, setCurrentSearchParams] = useState<URLSearchParams | null>(null);
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [isCartOpen, setIsCartOpen] = useState(false);
+
+    const goToOrders = () => {
+        if (isOrdersPending) return;
+        startOrdersTransition(() => {
+            router.push('/orders');
+        });
+    };
 
     const isNavLinkActive = (href: string) => {
         const [path, queryString] = href.split('?');
@@ -129,12 +138,21 @@ export default function Navbar() {
                                 )}
                             </button>
 
-                            <Link
-                                href="/orders"
-                                className="hidden md:inline-flex items-center gap-1.5 px-4 py-2 border border-saffron-400 text-saffron-700 bg-transparent text-sm font-semibold rounded-xl hover:bg-saffron-50 hover:border-saffron-500 transition-all duration-200"
+                            <button
+                                type="button"
+                                onClick={goToOrders}
+                                disabled={isOrdersPending}
+                                className="hidden md:inline-flex items-center gap-1.5 px-4 py-2 border border-saffron-400 text-saffron-700 bg-transparent text-sm font-semibold rounded-xl hover:bg-saffron-50 hover:border-saffron-500 transition-all duration-200 disabled:opacity-70 disabled:cursor-not-allowed"
                             >
-                                My Orders
-                            </Link>
+                                {isOrdersPending ? (
+                                    <>
+                                        <Loader2 size={14} className="animate-spin" />
+                                        Opening...
+                                    </>
+                                ) : (
+                                    'My Orders'
+                                )}
+                            </button>
 
                             {/* Hamburger */}
                             <button
@@ -207,13 +225,24 @@ export default function Navbar() {
                 </nav>
 
                 <div className="p-4 border-t border-cream-200 flex flex-col gap-3">
-                    <Link
-                        href="/orders"
-                        onClick={() => setIsMenuOpen(false)}
-                        className="flex items-center justify-center w-full py-3.5 bg-saffron-gradient text-white font-semibold rounded-2xl shadow-warm hover:shadow-glow transition-all duration-200 touch-target"
+                    <button
+                        type="button"
+                        onClick={() => {
+                            setIsMenuOpen(false);
+                            goToOrders();
+                        }}
+                        disabled={isOrdersPending}
+                        className="flex items-center justify-center w-full py-3.5 bg-saffron-gradient text-white font-semibold rounded-2xl shadow-warm hover:shadow-glow transition-all duration-200 touch-target disabled:opacity-70 disabled:cursor-not-allowed"
                     >
-                        My Orders
-                    </Link>
+                        {isOrdersPending ? (
+                            <span className="inline-flex items-center gap-2">
+                                <Loader2 size={16} className="animate-spin" />
+                                Opening...
+                            </span>
+                        ) : (
+                            'My Orders'
+                        )}
+                    </button>
                     <a
                         href="tel:+917055513961"
                         className="flex items-center justify-center gap-2 w-full py-3 border border-maroon-200 text-maroon-800 font-medium rounded-2xl hover:bg-maroon-50 transition-colors duration-200 touch-target"
