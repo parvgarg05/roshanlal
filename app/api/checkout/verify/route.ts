@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { PaymentVerifySchema } from '@/lib/validations/payment';
 import { prisma } from '@/lib/prisma';
-import { sendOrderConfirmationFanOut } from '@/lib/notifications';
 import { validatePaymentEnv } from '@/lib/paymentEnv';
 
 export const runtime = 'nodejs';
@@ -113,11 +112,7 @@ export async function POST(req: NextRequest) {
             },
         });
 
-        // 5. Fire and forget notifications!
-        // We intentionally DO NOT await this. It runs in the background.
-        sendOrderConfirmationFanOut(updatedOrder.id).catch(console.error);
-
-        // 6. Return success immediately
+        // 5. Return success immediately
         return NextResponse.json({
             success: true,
             orderId: updatedOrder.id,
