@@ -98,8 +98,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     }, [items]);
 
     const dispatchCartAction = (action: CartAction) => {
-        applyOptimistic(action);
         startTransition(() => {
+            applyOptimistic(action);
             setItems((prev) => reduceCartItems(prev, action));
         });
     };
