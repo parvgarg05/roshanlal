@@ -2,9 +2,10 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-import { X, ShoppingBag, Trash2, ArrowRight, Tag } from 'lucide-react';
-import { useEffect } from 'react';
+import { X, ShoppingBag, Trash2, ArrowRight, Tag, Loader2 } from 'lucide-react';
+import { useEffect, useState, useTransition } from 'react';
 import clsx from 'clsx';
+import { useRouter } from 'next/navigation';
 import { useCart } from '@/context/CartContext';
 import QuantitySelector from '@/components/ui/QuantitySelector';
 import Button from '@/components/ui/Button';
@@ -16,8 +17,25 @@ interface CartDrawerProps {
 }
 
 export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
+    const router = useRouter();
+    const [isNavigating, startNavigationTransition] = useTransition();
+    const [pendingPath, setPendingPath] = useState<string | null>(null);
     const { items, totalItems, totalPrice, cgstTotal, sgstTotal, deliveryConfig, deliveryCharge: delivery, updateQuantity, removeItem } = useCart();
     const grandTotal = totalPrice + cgstTotal + sgstTotal + delivery;
+
+    const navigateFromDrawer = (path: '/checkout' | '/cart') => {
+        if (isNavigating) return;
+        setPendingPath(path);
+        startNavigationTransition(() => {
+            router.push(path);
+        });
+    };
+
+    useEffect(() => {
+        if (!isNavigating) {
+            setPendingPath(null);
+        }
+    }, [isNavigating]);
 
     // Lock scroll
     useEffect(() => {
@@ -183,16 +201,39 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
                             </div>
 
                             <div className="flex flex-col gap-2 pt-1">
-                                <Link href="/checkout" onClick={onClose} className="w-full">
-                                    <Button variant="primary" size="lg" fullWidth rightIcon={<ArrowRight size={18} />}>
-                                        Proceed to Checkout
-                                    </Button>
-                                </Link>
-                                <Link href="/cart" onClick={onClose} className="w-full">
-                                    <Button variant="ghost" size="md" fullWidth>
-                                        View Full Cart
-                                    </Button>
-                                </Link>
+                                <Button
+                                    variant="primary"
+                                    size="lg"
+                                    fullWidth
+                                    rightIcon={<ArrowRight size={18} />}
+                                    disabled={isNavigating && pendingPath === '/checkout'}
+                                    onClick={() => navigateFromDrawer('/checkout')}
+                                >
+                                    {isNavigating && pendingPath === '/checkout' ? (
+                                        <span className="inline-flex items-center gap-2">
+                                            <Loader2 size={16} className="animate-spin" />
+                                            Opening Checkout...
+                                        </span>
+                                    ) : (
+                                        'Proceed to Checkout'
+                                    )}
+                                </Button>
+                                <Button
+                                    variant="ghost"
+                                    size="md"
+                                    fullWidth
+                                    disabled={isNavigating && pendingPath === '/cart'}
+                                    onClick={() => navigateFromDrawer('/cart')}
+                                >
+                                    {isNavigating && pendingPath === '/cart' ? (
+                                        <span className="inline-flex items-center gap-2">
+                                            <Loader2 size={16} className="animate-spin" />
+                                            Opening Cart...
+                                        </span>
+                                    ) : (
+                                        'View Full Cart'
+                                    )}
+                                </Button>
                             </div>
                         </div>
                     </>
