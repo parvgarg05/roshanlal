@@ -8,7 +8,7 @@ export default function CartToast() {
     const { cartToastMessage, clearCartToast } = useCart();
 
     return (
-        <div className="fixed bottom-20 sm:bottom-8 right-4 z-[70] pointer-events-none">
+        <div className="fixed bottom-24 right-4 z-[70] pointer-events-none">
             <div
                 role="status"
                 aria-live="polite"
