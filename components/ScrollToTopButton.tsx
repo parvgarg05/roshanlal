@@ -41,7 +41,7 @@ export default function ScrollToTopButton() {
             type="button"
             onClick={handleMoveToTop}
             aria-label="Move to top"
-            className={`fixed bottom-5 right-5 z-[80] h-11 w-11 rounded-full bg-maroon-900 text-cream-50 shadow-warm-sm transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saffron-500 focus-visible:ring-offset-2 ${
+            className={`fixed bottom-5 right-5 z-[80] h-12 w-12 rounded-full border border-maroon-800 bg-maroon-900 text-cream-50 shadow-md transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-saffron-500 focus-visible:ring-offset-2 hover:-translate-y-0.5 hover:bg-maroon-800 hover:shadow-lg active:translate-y-0 active:scale-[0.98] ${
                 isVisible
                     ? 'translate-y-0 opacity-100 pointer-events-auto'
                     : 'translate-y-2 opacity-0 pointer-events-none'
